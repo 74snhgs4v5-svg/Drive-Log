@@ -127,20 +127,15 @@ function saveManual(){
  trip.endOdometer=trip.startOdometer+trip.distanceKm;state.trips.unshift(trip);state.odometer=trip.endOdometer;save();closeModal();
 }
 
-function requestLocation(){
- if(!navigator.geolocation){document.getElementById("gpsStatus").textContent="GPS wird von diesem Browser nicht unterstützt.";return}
- navigator.geolocation.getCurrentPosition(p=>{currentGPS=p.coords;document.getElementById("gpsStatus").textContent=`GPS verfügbar: ${p.coords.latitude.toFixed(5)}, ${p.coords.longitude.toFixed(5)}`},e=>document.getElementById("gpsStatus").textContent="Standortzugriff abgelehnt oder nicht verfügbar.",{enableHighAccuracy:true});
-}
-async function reverse(lat,lon){return `GPS ${lat.toFixed(5)}, ${lon.toFixed(5)}`}
-function openAuto(){requestLocation();openModal(`<h2>Fahrt erfassen</h2><p class="small">Die Website kann deinen aktuellen GPS-Standort verwenden. Für einen echten Dauerbetrieb im Hintergrund ist später die native iPhone-App zuverlässiger.</p><div class="card"><b id="autoStatus">Warte auf GPS…</b><p id="autoGPS" class="small"></p></div><button class="primary" onclick="startAuto()">Fahrt starten</button>`);watchGPS()}
-let watchId=null;
-function watchGPS(){if(!navigator.geolocation)return;watchId=navigator.geolocation.watchPosition(p=>{currentGPS=p.coords;let el=document.getElementById("autoGPS");if(el)el.textContent=`Standort: ${p.coords.latitude.toFixed(5)}, ${p.coords.longitude.toFixed(5)}`;let st=document.getElementById("autoStatus");if(st)st.textContent="GPS bereit";},{enableHighAccuracy:true,maximumAge:10000})}
-function startAuto(){
- if(!currentGPS){alert("Noch kein GPS-Standort verfügbar.");return}
- const s={lat:currentGPS.latitude,lon:currentGPS.longitude,time:new Date()};
- openModal(`<h2>Fahrt läuft</h2><p>Start: ${s.lat.toFixed(5)}, ${s.lon.toFixed(5)}</p><p class="small">Wenn du angekommen bist, auf „Fahrt beenden“ drücken.</p><button class="primary" onclick='finishAuto(${JSON.stringify(s)})'>Fahrt beenden</button>`);
-}
-async function finishAuto(s){
+function setGPSStatus(text,cls=""){const e=document.getElementById("gpsStatus");if(e){e.className="small "+cls;e.textContent=text}}
+function getGPSOnce(){return new Promise((resolve,reject)=>{if(!navigator.geolocation){reject({code:0,message:"Dieser Browser unterstützt GPS nicht."});return}navigator.geolocation.getCurrentPosition(p=>{currentGPS=p.coords;resolve(p.coords)},e=>reject(e),{enableHighAccuracy:true,timeout:15000,maximumAge:0})})}
+function requestLocation(){setGPSStatus("GPS wird angefragt…");getGPSOnce().then(c=>setGPSStatus(`GPS bereit · Genauigkeit ca. ${Math.round(c.accuracy)} m`,"ok")).catch(e=>setGPSStatus("GPS nicht verfügbar: "+gpsError(e),"error"))}
+function gpsError(e){if(e.code===1)return"Standortzugriff wurde abgelehnt.";if(e.code===2)return"Standort konnte nicht bestimmt werden.";if(e.code===3)return"GPS-Anfrage hat zu lange gedauert.";return"unbekannter Fehler."}
+function setAuto(text,cls=""){const e=document.getElementById("autoStatus");if(e){e.textContent=text;e.className=cls}}
+function openAuto(){openModal(`<h2>Fahrt erfassen</h2><p class="small">DriveLog fragt jetzt aktiv deinen GPS-Standort ab. Die Website kann den Standort nur zuverlässig erfassen, solange die Seite aktiv ist.</p><div class="status"><b id="autoStatus">GPS wird angefragt…</b><p id="autoGPS" class="small">Bitte kurz warten.</p></div><button id="autoStart" class="primary" disabled onclick="startAuto()">Fahrt starten</button>`);requestAutoGPS()}
+function requestAutoGPS(){if(!navigator.geolocation){setAuto("Dieser Browser unterstützt GPS nicht.","error");return}setAuto("GPS wird angefragt…");getGPSOnce().then(c=>{currentGPS=c;setAuto("GPS bereit","ok");const e=document.getElementById("autoGPS");if(e)e.textContent=`Genauigkeit: ca. ${Math.round(c.accuracy)} m · ${c.latitude.toFixed(5)}, ${c.longitude.toFixed(5)}`;const b=document.getElementById("autoStart");if(b)b.disabled=false;if(watchId)navigator.geolocation.clearWatch(watchId);watchId=navigator.geolocation.watchPosition(p=>{currentGPS=p.coords;const g=document.getElementById("autoGPS");if(g)g.textContent=`GPS aktiv · Genauigkeit: ca. ${Math.round(p.coords.accuracy)} m · ${p.coords.latitude.toFixed(5)}, ${p.coords.longitude.toFixed(5)}`},()=>{},{enableHighAccuracy:true,maximumAge:5000,timeout:15000})}).catch(e=>{setAuto("GPS konnte nicht ermittelt werden.","error");const g=document.getElementById("autoGPS");if(g)g.textContent=gpsError(e)})}
+function startAuto(){if(!currentGPS){setAuto("Noch kein GPS-Standort.","error");return}const s={lat:currentGPS.latitude,lon:currentGPS.longitude,time:new Date(),accuracy:currentGPS.accuracy};openModal(`<h2>Fahrt läuft</h2><div class="status"><b>Start erfasst</b><p class="small">${s.lat.toFixed(5)}, ${s.lon.toFixed(5)} · Genauigkeit ca. ${Math.round(s.accuracy)} m</p></div><p>Wenn du angekommen bist, auf „Fahrt beenden“ drücken.</p><button class="primary" onclick='finishAuto(${JSON.stringify(s)})'>Fahrt beenden</button>`) }
+function finishAuto(s){
  if(!currentGPS){alert("Kein aktueller GPS-Standort.");return}
  let e={lat:currentGPS.latitude,lon:currentGPS.longitude,time:new Date()};
  // Fallback distance is straight-line. Production version will use a routing API.
