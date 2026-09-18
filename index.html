@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#111318">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="DriveLog">
+  <link rel="manifest" href="manifest.webmanifest">
+  <title>DriveLog</title>
+  <style>
+    :root{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display",Arial,sans-serif;background:#f4f5f7;color:#111318}
+    *{box-sizing:border-box} body{margin:0;background:#f4f5f7} button,input,select,textarea{font:inherit}
+    .app{max-width:720px;margin:auto;min-height:100vh;padding-bottom:88px}
+    header{padding:calc(18px + env(safe-area-inset-top)) 20px 18px;background:#111318;color:white;position:sticky;top:0;z-index:5}
+    header h1{margin:0;font-size:25px}.sub{opacity:.65;font-size:13px;margin-top:3px}
+    main{padding:16px}.screen{display:none}.screen.active{display:block}
+    .card{background:white;border-radius:22px;padding:18px;margin-bottom:14px;box-shadow:0 1px 8px #0000000b}
+    .hero{text-align:center;padding:28px 18px}.hero .icon{font-size:46px}.km{font-size:36px;font-weight:800;margin:6px 0}
+    .muted{color:#737780}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    button{border:0;border-radius:15px;padding:14px 16px;font-weight:700;cursor:pointer}
+    .primary{background:#111318;color:white}.secondary{background:#e9eaed;color:#111318}.danger{background:#ffe5e5;color:#a40000}
+    label{display:block;font-size:13px;font-weight:700;margin:12px 0 6px}input,select,textarea{width:100%;padding:12px;border:1px solid #d8dbe0;border-radius:12px;background:#fff}
+    textarea{min-height:80px;resize:vertical}.trip{padding:14px 0;border-bottom:1px solid #eceef1}.trip:last-child{border:0}
+    .triptop{display:flex;justify-content:space-between;gap:10px;font-weight:750}.small{font-size:13px;color:#70747d;margin-top:5px}
+    nav{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #ddd;display:flex;justify-content:center;z-index:10;padding-bottom:env(safe-area-inset-bottom)}
+    nav button{background:none;border-radius:0;color:#666;flex:1;max-width:180px;padding:12px 4px;font-size:12px}nav button.active{color:#111318;font-weight:800}
+    .pill{display:inline-block;background:#eef0f3;border-radius:999px;padding:5px 9px;font-size:12px}
+    .modal{position:fixed;inset:0;background:#0008;display:none;align-items:flex-end;z-index:20}.modal.show{display:flex}
+    .sheet{background:#f6f7f9;width:100%;max-height:92vh;overflow:auto;border-radius:24px 24px 0 0;padding:20px 16px calc(24px + env(safe-area-inset-bottom))}
+    .row{display:flex;gap:10px;align-items:center}.row>*{flex:1}.close{float:right;background:#e5e6e9;padding:8px 12px}
+    @media(min-width:700px){nav{position:sticky;bottom:0;margin-top:-64px}.sheet{max-width:720px;margin:auto}}
+  </style>
+</head>
+<body>
+<div class="app">
+<header><h1>DriveLog</h1><div class="sub">Digitales Fahrtenbuch</div></header>
+<main>
+<section id="home" class="screen active">
+  <div class="card hero">
+    <div class="icon">🚗</div><div class="muted">Aktueller Kilometerstand</div>
+    <div class="km" id="odometer">0 km</div>
+    <div class="grid">
+      <button class="primary" onclick="openAuto()">Fahrt erfassen</button>
+      <button class="secondary" onclick="openOdo()">Tacho ändern</button>
+    </div>
+  </div>
+  <div class="card"><b>Letzte Fahrt</b><div id="lastTrip" class="small">Noch keine Fahrten vorhanden.</div></div>
+</section>
+
+<section id="trips" class="screen">
+  <div class="card"><div class="row"><h2 style="margin:0;flex:2">Fahrten</h2><button class="secondary" onclick="openManual()">＋</button></div></div>
+  <div class="card" id="tripList"></div>
+</section>
+
+<section id="month" class="screen">
+  <div class="card">
+    <label>Monat</label><input id="monthPick" type="month" onchange="render()">
+  </div>
+  <div class="card" id="stats"></div>
+  <div class="card"><b>Fahrten im Monat</b><div id="monthList"></div></div>
+</section>
+
+<section id="settings" class="screen">
+  <div class="card"><h3>Standort</h3><button class="primary" onclick="requestLocation()">Standortberechtigung anfordern</button><p class="small" id="gpsStatus">Nicht geprüft</p></div>
+  <div class="card"><h3>Daten</h3><div class="grid">
+    <button class="secondary" onclick="exportCSV()">CSV exportieren</button>
+    <button class="secondary" onclick="backup()">Backup speichern</button>
+  </div></div>
+  <div class="card"><h3>Fahrzeug</h3><label>Aktueller Kilometerstand</label><input id="settingsOdo" type="number" inputmode="numeric" onchange="setOdo(this.value)"></div>
+</section>
+</main>
+
+<nav>
+<button class="active" onclick="tab('home',this)">⌂<br>Start</button>
+<button onclick="tab('trips',this)">☰<br>Fahrten</button>
+<button onclick="tab('month',this)">▣<br>Monat</button>
+<button onclick="tab('settings',this)">⚙<br>Einstellungen</button>
+</nav>
+</div>
+
+<div class="modal" id="modal"><div class="sheet"><button class="close" onclick="closeModal()">Schließen</button><div id="modalContent"></div></div></div>
+
+<script>
+const KEY="drivelog.web.v1";
+let state=JSON.parse(localStorage.getItem(KEY)||'null')||{odometer:0,trips:[]};
+let currentGPS=null;
+
+function save(){localStorage.setItem(KEY,JSON.stringify(state));render()}
+function esc(s){return String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
+function fmtDate(x){return new Date(x).toLocaleDateString("de-DE")}
+function fmtTime(x){return new Date(x).toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"})}
+function tab(id,btn){document.querySelectorAll(".screen").forEach(x=>x.classList.remove("active"));document.getElementById(id).classList.add("active");document.querySelectorAll("nav button").forEach(x=>x.classList.remove("active"));btn.classList.add("active");render()}
+function render(){
+ document.getElementById("odometer").textContent=Number(state.odometer).toFixed(0)+" km";
+ document.getElementById("settingsOdo").value=Number(state.odometer).toFixed(0);
+ let t=state.trips[0]; document.getElementById("lastTrip").innerHTML=t?tripHTML(t):"Noch keine Fahrten vorhanden.";
+ document.getElementById("tripList").innerHTML=state.trips.length?state.trips.map(tripHTML).join(""):"Noch keine Fahrten vorhanden.";
+ let m=document.getElementById("monthPick"); if(!m.value)m.value=new Date().toISOString().slice(0,7);
+ let trips=state.trips.filter(t=>t.date.slice(0,7)===m.value), total=trips.reduce((a,t)=>a+t.distanceKm,0), biz=trips.filter(t=>t.type==="Geschäftlich").reduce((a,t)=>a+t.distanceKm,0);
+ document.getElementById("stats").innerHTML=`<div class="grid"><div><b>${trips.length}</b><div class="small">Fahrten</div></div><div><b>${total.toFixed(1)} km</b><div class="small">Gesamt</div></div><div><b>${biz.toFixed(1)} km</b><div class="small">Geschäftlich</div></div><div><b>${(total-biz).toFixed(1)} km</b><div class="small">Nicht geschäftlich</div></div></div>`;
+ document.getElementById("monthList").innerHTML=trips.length?trips.map(tripHTML).join(""):"Keine Fahrten.";
+}
+function tripHTML(t){return `<div class="trip"><div class="triptop"><span>${esc(t.startAddress||"Unbekannt")} → ${esc(t.destinationAddress||"Unbekannt")}</span><span>${Number(t.distanceKm).toFixed(1)} km</span></div><div class="small">${fmtDate(t.startTime)} · ${fmtTime(t.startTime)}–${fmtTime(t.endTime)} · ${esc(t.type)}${t.customer?" · "+esc(t.customer):""}</div><div class="small">${esc(t.purpose||"Kein Fahrtzweck")}</div></div>`}
+function openModal(html){document.getElementById("modalContent").innerHTML=html;document.getElementById("modal").classList.add("show")}
+function closeModal(){document.getElementById("modal").classList.remove("show")}
+
+function openOdo(){openModal(`<h2>Tacho korrigieren</h2><label>Kilometerstand</label><input id="odoInput" type="number" value="${state.odometer}" inputmode="numeric"><br><br><button class="primary" onclick="setOdo(document.getElementById('odoInput').value);closeModal()">Speichern</button>`)}
+function setOdo(v){let n=parseFloat(String(v).replace(",","."));if(Number.isFinite(n)&&n>=0){state.odometer=n;save()}}
+
+function openManual(){openModal(editorHTML())}
+function editorHTML(){return `<h2>Neue Fahrt</h2>
+<label>Datum</label><input id="fDate" type="date" value="${new Date().toISOString().slice(0,10)}">
+<div class="row"><div><label>Startzeit</label><input id="fStart" type="time"></div><div><label>Ankunft</label><input id="fEnd" type="time"></div></div>
+<label>Startadresse</label><input id="fFrom" placeholder="z. B. Bergkamen">
+<label>Zieladresse</label><input id="fTo" placeholder="z. B. Dortmund">
+<div class="row"><div><label>Kilometer</label><input id="fKm" type="number" step="0.1"></div><div><label>KM-Stand Anfang</label><input id="fOdo" type="number" value="${state.odometer}"></div></div>
+<label>Fahrtart</label><select id="fType"><option>Geschäftlich</option><option>Privat</option><option>Arbeitsweg</option><option>Ungeklärt</option></select>
+<label>Fahrtzweck</label><input id="fPurpose" placeholder="z. B. Kundenbesuch">
+<label>Kunde</label><input id="fCustomer">
+<label>Notizen</label><textarea id="fNotes"></textarea><br>
+<button class="primary" onclick="saveManual()">Fahrt speichern</button>`}
+function saveManual(){
+ let d=document.getElementById("fDate").value, st=document.getElementById("fStart").value||"00:00", en=document.getElementById("fEnd").value||st;
+ let trip={id:crypto.randomUUID(),date:d,startTime:new Date(d+"T"+st).toISOString(),endTime:new Date(d+"T"+en).toISOString(),startAddress:document.getElementById("fFrom").value,destinationAddress:document.getElementById("fTo").value,distanceKm:parseFloat(document.getElementById("fKm").value)||0,startOdometer:parseFloat(document.getElementById("fOdo").value)||state.odometer,type:document.getElementById("fType").value,purpose:document.getElementById("fPurpose").value,customer:document.getElementById("fCustomer").value,notes:document.getElementById("fNotes").value};
+ trip.endOdometer=trip.startOdometer+trip.distanceKm;state.trips.unshift(trip);state.odometer=trip.endOdometer;save();closeModal();
+}
+
+function requestLocation(){
+ if(!navigator.geolocation){document.getElementById("gpsStatus").textContent="GPS wird von diesem Browser nicht unterstützt.";return}
+ navigator.geolocation.getCurrentPosition(p=>{currentGPS=p.coords;document.getElementById("gpsStatus").textContent=`GPS verfügbar: ${p.coords.latitude.toFixed(5)}, ${p.coords.longitude.toFixed(5)}`},e=>document.getElementById("gpsStatus").textContent="Standortzugriff abgelehnt oder nicht verfügbar.",{enableHighAccuracy:true});
+}
+async function reverse(lat,lon){return `GPS ${lat.toFixed(5)}, ${lon.toFixed(5)}`}
+function openAuto(){requestLocation();openModal(`<h2>Fahrt erfassen</h2><p class="small">Die Website kann deinen aktuellen GPS-Standort verwenden. Für einen echten Dauerbetrieb im Hintergrund ist später die native iPhone-App zuverlässiger.</p><div class="card"><b id="autoStatus">Warte auf GPS…</b><p id="autoGPS" class="small"></p></div><button class="primary" onclick="startAuto()">Fahrt starten</button>`);watchGPS()}
+let watchId=null;
+function watchGPS(){if(!navigator.geolocation)return;watchId=navigator.geolocation.watchPosition(p=>{currentGPS=p.coords;let el=document.getElementById("autoGPS");if(el)el.textContent=`Standort: ${p.coords.latitude.toFixed(5)}, ${p.coords.longitude.toFixed(5)}`;let st=document.getElementById("autoStatus");if(st)st.textContent="GPS bereit";},{enableHighAccuracy:true,maximumAge:10000})}
+function startAuto(){
+ if(!currentGPS){alert("Noch kein GPS-Standort verfügbar.");return}
+ const s={lat:currentGPS.latitude,lon:currentGPS.longitude,time:new Date()};
+ openModal(`<h2>Fahrt läuft</h2><p>Start: ${s.lat.toFixed(5)}, ${s.lon.toFixed(5)}</p><p class="small">Wenn du angekommen bist, auf „Fahrt beenden“ drücken.</p><button class="primary" onclick='finishAuto(${JSON.stringify(s)})'>Fahrt beenden</button>`);
+}
+async function finishAuto(s){
+ if(!currentGPS){alert("Kein aktueller GPS-Standort.");return}
+ let e={lat:currentGPS.latitude,lon:currentGPS.longitude,time:new Date()};
+ // Fallback distance is straight-line. Production version will use a routing API.
+ const R=6371, p=Math.PI/180, dLat=(e.lat-s.lat)*p,dLon=(e.lon-s.lon)*p;
+ const a=Math.sin(dLat/2)**2+Math.cos(s.lat*p)*Math.cos(e.lat*p)*Math.sin(dLon/2)**2;
+ const km=2*R*Math.asin(Math.sqrt(a));
+ let trip={id:crypto.randomUUID(),date:s.time.toISOString().slice(0,10),startTime:s.time.toISOString(),endTime:e.time.toISOString(),startAddress:await reverse(s.lat,s.lon),destinationAddress:await reverse(e.lat,e.lon),distanceKm:km,startOdometer:state.odometer,endOdometer:state.odometer+km,type:"Ungeklärt",purpose:"",customer:"",notes:""};
+ state.trips.unshift(trip);state.odometer=trip.endOdometer;save();if(watchId)navigator.geolocation.clearWatch(watchId);closeModal();
+}
+function exportCSV(){
+ const head="Datum;Startzeit;Endzeit;Start;Ziel;Kilometer;KM-Stand Anfang;KM-Stand Ende;Art;Zweck;Kunde;Notizen\n";
+ const body=state.trips.map(t=>[t.date,fmtTime(t.startTime),fmtTime(t.endTime),t.startAddress,t.destinationAddress,t.distanceKm.toFixed(1),t.startOdometer.toFixed(0),t.endOdometer.toFixed(0),t.type,t.purpose,t.customer,t.notes].map(x=>`"${String(x).replaceAll('"','""')}"`).join(";")).join("\n");
+ download("DriveLog.csv",head+body,"text/csv;charset=utf-8");
+}
+function backup(){download("DriveLog-Backup.json",JSON.stringify({...state,exportedAt:new Date().toISOString()},null,2),"application/json")}
+function download(name,data,type){let a=document.createElement("a");a.href=URL.createObjectURL(new Blob([data],{type}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
+render();
+</script>
+</body>
+</html>
