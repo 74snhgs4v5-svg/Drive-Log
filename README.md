@@ -1,17 +1,13 @@
-# DriveLog Web V4
+# DriveLog Web V5
 
-Enthält:
-- stabile GPS-Fahrtenerfassung
-- Google-Geocoding/Routing vorbereitet
-- API-Key-Eingabe für einen Test-Key mit Website-Restriktion
-- Straßenkilometer über Google Routes API, wenn der Key vorhanden ist
-- echte Adressauflösung über Google Geocoding API, wenn der Key vorhanden ist
-- Monatsübersicht
-- Druck-/PDF-Workflow über den Browser
-- CSV und JSON Backup
-- KI-Erklärung und sichere Architektur-Hinweis
+Mobile-first Fahrtenbuch-Prototyp.
 
-Wichtig:
-- Niemals einen ungeschützten OpenAI API-Key in die Website einbauen.
-- Für OpenAI wird später ein kleines Backend benötigt.
-- Der Google-Key sollte auf die konkrete GitHub-Pages-Domain beschränkt werden.
+Neu in V5:
+- Standardorte (Name, GPS, optional Adresse, Erkennungsradius)
+- lokale automatische Start-/Ziel-Zuordnung
+- automatische Fahrtzweck-Regeln für Zuhause/Firma/Kunde
+- Audit-Ereignisse für neue/gelöschte Standardorte und neue Fahrten
+- Google Routes/Geocoding weiterhin optional
+- CSV/JSON Backup und Monatsdruck/PDF
+
+Hinweis: Die Website ist ein Prototyp. Für eine endgültige iPhone-App mit zuverlässiger Hintergrund-Ortung wird native iOS-Technik benötigt. Eine Luftlinien-Fallbackstrecke sollte nicht als endgültiger Straßenkilometer-Nachweis verwendet werden.
